@@ -32,6 +32,9 @@ private:
 
 public:
   TokenKind getKind() const { return Kind; }
+  llvm::StringRef getText() const {
+    return Text;
+  }
 
   bool is(TokenKind K) const { return Kind == K; }
   bool isOneOf(TokenKind K1, TokenKind K2) const {
@@ -40,10 +43,6 @@ public:
   template <typename... Ts>
   bool isOneOf(TokenKind K1, TokenKind K2, Ts... Ks) const {
     return is(K1) || isOneOf(K2, Ks...);
-  }
-
-  llvm::StringRef getText() const {
-    return Text;
   }
 };
 

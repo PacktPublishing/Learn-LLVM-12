@@ -68,17 +68,14 @@ Expr *Parser::parseFactor() {
   switch (Tok.getKind()) {
   case Token::number:
     Res = new Factor(Factor::Number, Tok.getText());
-    advance();
-    break;
+    advance(); break;
   case Token::ident:
     Res = new Factor(Factor::Ident, Tok.getText());
-    advance();
-    break;
+    advance(); break;
   case Token::l_paren:
     advance();
     Res = parseExpr();
-    if (!consume(Token::r_paren))
-      break;
+    if (!consume(Token::r_paren)) break;
   default:
     if (!Res)
       error();
