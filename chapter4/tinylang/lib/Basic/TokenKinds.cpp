@@ -4,8 +4,8 @@
 using namespace tinylang;
 
 static const char * const TokNames[] = {
-#define TOK(X) #X,
-#define KEYWORD(X,Y) #X,
+#define TOK(ID) #ID,
+#define KEYWORD(ID, FLAG) #ID,
 #include "tinylang/Basic/TokenKinds.def"
   nullptr
 };
@@ -19,7 +19,7 @@ const char *tok::getTokenName(TokenKind Kind) {
 
 const char *tok::getPunctuatorSpelling(TokenKind Kind) {
   switch (Kind) {
-#define PUNCTUATOR(X,Y) case X: return Y;
+#define PUNCTUATOR(ID, SP) case ID: return SP;
 #include "tinylang/Basic/TokenKinds.def"
     default: break;
   }
@@ -28,7 +28,7 @@ const char *tok::getPunctuatorSpelling(TokenKind Kind) {
 
 const char *tok::getKeywordSpelling(TokenKind Kind) {
   switch (Kind) {
-#define KEYWORD(X,Y) case kw_ ## X: return #X;
+#define KEYWORD(ID, FLAG) case kw_ ## ID: return #ID;
 #include "tinylang/Basic/TokenKinds.def"
     default: break;
   }
