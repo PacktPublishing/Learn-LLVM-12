@@ -7,7 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #ifndef DIAG
-#define DIAG(X,Y,Z)
+#define DIAG(ID, Level, Msg)
 #endif
 
 DIAG(err_unterminated_block_comment, Error, "unterminated (* comment")

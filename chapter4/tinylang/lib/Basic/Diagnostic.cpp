@@ -4,11 +4,11 @@ using namespace tinylang;
 
 namespace {
 const char *DiagnosticText[] = {
-#define DIAG(X, Y, Z) Z,
+#define DIAG(ID, Level, Msg) Msg,
 #include "tinylang/Basic/Diagnostic.def"
 };
 SourceMgr::DiagKind DiagnosticKind[] = {
-#define DIAG(X, Y, Z) SourceMgr::DK_##Y,
+#define DIAG(ID, Level, Msg) SourceMgr::DK_##Level,
 #include "tinylang/Basic/Diagnostic.def"
 };
 } // namespace

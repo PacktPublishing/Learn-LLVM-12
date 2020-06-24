@@ -13,7 +13,7 @@ namespace tinylang {
 
 namespace diag {
 enum {
-#define DIAG(X, Y, Z) X,
+#define DIAG(ID, Level, Msg) ID,
 #include "tinylang/Basic/Diagnostic.def"
 };
 } // namespace diag
