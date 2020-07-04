@@ -12,10 +12,7 @@
 namespace tinylang {
 
 class KeywordFilter {
-  using HashTableTy =
-      llvm::StringMap<tok::TokenKind,
-                      llvm::BumpPtrAllocator>;
-  HashTableTy HashTable;
+  llvm::StringMap<tok::TokenKind> HashTable;
 
   void addKeyword(StringRef Keyword,
                   tok::TokenKind TokenCode);
