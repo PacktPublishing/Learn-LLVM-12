@@ -30,7 +30,7 @@ public:
   DiagnosticsEngine(SourceMgr &SrcMgr)
       : SrcMgr(SrcMgr), NumErrors(0) {}
 
-  unsigned nunErrors() { return NumErrors; }
+  unsigned numErrors() { return NumErrors; }
 
   template <typename... Args>
   void report(SMLoc Loc, unsigned DiagID,
