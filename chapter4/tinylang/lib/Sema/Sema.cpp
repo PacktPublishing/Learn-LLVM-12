@@ -384,6 +384,8 @@ Expr *Sema::actOnVariable(Decl *D) {
     return nullptr;
   if (auto *V = dyn_cast<VariableDeclaration>(D))
     return new VariableAccess(V);
+  else if (auto *P = dyn_cast<FormalParameterDeclaration>(D))
+    return new VariableAccess(P);
   else if (auto *C = dyn_cast<ConstantDeclaration>(D)) {
     if (C == TrueConst)
       return TrueLiteral;

@@ -302,13 +302,15 @@ public:
 };
 
 class VariableAccess : public Expr {
-  VariableDeclaration *Var;
+  Decl *Var;
 
 public:
   VariableAccess(VariableDeclaration *Var)
       : Expr(EK_Var, Var->getType(), false), Var(Var) {}
+  VariableAccess(FormalParameterDeclaration *Param)
+      : Expr(EK_Var, Param->getType(), false), Var(Param) {}
 
-  VariableDeclaration *geDecl() { return Var; }
+  Decl *getDecl() { return Var; }
 
   static bool classof(const Expr *E) {
     return E->getKind() == EK_Var;
