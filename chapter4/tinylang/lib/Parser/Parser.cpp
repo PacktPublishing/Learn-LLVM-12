@@ -183,24 +183,24 @@ _error:
 }
 
 bool Parser::parseVariableDeclaration(DeclList &Decls) {
-  auto _errorhandler = [this] {
-    while (!Tok.is(tok::semi)) {
-      advance();
-      if (Tok.is(tok::eof))
-        return true;
-    }
+  {
+    Decl *D;
+    IdentList Ids;
+    if (parseIdentList(Ids))
+      goto _error;
+    if (consume(tok::colon))
+      goto _error;
+    if (parseQualident(D))
+      goto _error;
+    Actions.actOnVariableDeclaration(Decls, Ids, D);
     return false;
-  };
-
-  Decl *D = nullptr;
-  IdentList Ids;
-  if (parseIdentList(Ids))
-    return _errorhandler();
-  if (consume(tok::colon))
-    return _errorhandler();
-  if (parseQualident(D))
-    return _errorhandler();
-  Actions.actOnVariableDeclaration(Decls, Ids, D);
+  }
+_error:
+  while (!Tok.is(tok::semi)) {
+    advance();
+    if (Tok.is(tok::eof))
+      return true;
+  }
   return false;
 }
 
@@ -223,6 +223,7 @@ bool Parser::parseProcedureDeclaration(
       if (parseFormalParameters(Params, RetType))
         goto _error;
     }
+    Actions.actOnProcedureHeading(D, Params, RetType);
     if (expect(tok::semi))
       goto _error;
     DeclList Decls;
@@ -232,9 +233,9 @@ bool Parser::parseProcedureDeclaration(
       goto _error;
     if (expect(tok::identifier))
       goto _error;
-    Actions.actOnProcedureDeclaration(
-        D, Tok.getLocation(), Tok.getIdentifier(), Params,
-        RetType, Decls, Stmts);
+    Actions.actOnProcedureDeclaration(D, Tok.getLocation(),
+                                      Tok.getIdentifier(),
+                                      Decls, Stmts);
 
     ParentDecls.push_back(D);
     advance();
@@ -400,37 +401,37 @@ _error:
 }
 
 bool Parser::parseIfStatement(StmtList &Stmts) {
-  auto _errorhandler = [this] {
-    while (!Tok.isOneOf(tok::semi, tok::kw_ELSE,
-                        tok::kw_END)) {
+  {
+    Expr *E = nullptr;
+    StmtList IfStmts, ElseStmts;
+    SMLoc Loc = Tok.getLocation();
+    if (consume(tok::kw_IF))
+      goto _error;
+    if (parseExpression(E))
+      goto _error;
+    if (consume(tok::kw_THEN))
+      goto _error;
+    if (parseStatementSequence(IfStmts))
+      goto _error;
+    if (Tok.is(tok::kw_ELSE)) {
       advance();
-      if (Tok.is(tok::eof))
-        return true;
+      if (parseStatementSequence(ElseStmts))
+        goto _error;
     }
-    return false;
-  };
-
-  Expr *E = nullptr;
-  StmtList IfStmts, ElseStmts;
-  SMLoc Loc = Tok.getLocation();
-  if (consume(tok::kw_IF))
-    return _errorhandler();
-  if (parseExpression(E))
-    return _errorhandler();
-  if (consume(tok::kw_THEN))
-    return _errorhandler();
-  if (parseStatementSequence(IfStmts))
-    return _errorhandler();
-  if (Tok.is(tok::kw_ELSE)) {
+    if (expect(tok::kw_END))
+      goto _error;
+    Actions.actOnIfStatement(Stmts, Loc, E, IfStmts,
+                             ElseStmts);
     advance();
-    if (parseStatementSequence(ElseStmts))
-      return _errorhandler();
+    return false;
   }
-  if (expect(tok::kw_END))
-    return _errorhandler();
-  Actions.actOnIfStatement(Stmts, Loc, E, IfStmts,
-                           ElseStmts);
-  advance();
+_error:
+  while (
+      !Tok.isOneOf(tok::semi, tok::kw_ELSE, tok::kw_END)) {
+    advance();
+    if (Tok.is(tok::eof))
+      return true;
+  }
   return false;
 }
 

@@ -167,10 +167,22 @@ Sema::actOnProcedureDeclaration(SMLoc Loc, StringRef Name) {
   return P;
 }
 
+void Sema::actOnProcedureHeading(
+    ProcedureDeclaration *ProcDecl, FormalParamList &Params,
+    Decl *RetType) {
+  ProcDecl->setFormalParams(Params);
+  auto RetTypeDecl =
+      dyn_cast_or_null<TypeDeclaration>(RetType);
+  if (!RetTypeDecl && RetType)
+    Diags.report(RetType->getLocation(),
+                 diag::err_returntype_must_be_type);
+  else
+    ProcDecl->setRetType(RetTypeDecl);
+}
+
 void Sema::actOnProcedureDeclaration(
     ProcedureDeclaration *ProcDecl, SMLoc Loc,
-    StringRef Name, FormalParamList &Params, Decl *RetType,
-    DeclList &Decls, StmtList &Stmts) {
+    StringRef Name, DeclList &Decls, StmtList &Stmts) {
 
   if (Name != ProcDecl->getName()) {
     Diags.report(Loc, diag::err_proc_identifier_not_equal);
@@ -179,14 +191,6 @@ void Sema::actOnProcedureDeclaration(
   }
   ProcDecl->setDecls(Decls);
   ProcDecl->setStmts(Stmts);
-
-  auto RetTypeDecl =
-      dyn_cast_or_null<TypeDeclaration>(RetType);
-  if (!RetTypeDecl && RetType)
-    Diags.report(Loc, diag::err_returntype_must_be_type,
-                 Name);
-  else
-    ProcDecl->setRetType(RetTypeDecl);
 }
 
 void Sema::actOnAssignment(StmtList &Stmts, SMLoc Loc,

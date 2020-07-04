@@ -57,10 +57,12 @@ public:
                                   bool IsVar);
   ProcedureDeclaration *
   actOnProcedureDeclaration(SMLoc Loc, StringRef Name);
+  void actOnProcedureHeading(ProcedureDeclaration *ProcDecl,
+                             FormalParamList &Params,
+                             Decl *RetType);
   void actOnProcedureDeclaration(
       ProcedureDeclaration *ProcDecl, SMLoc Loc,
-      StringRef Name, FormalParamList &Params,
-      Decl *RetType, DeclList &Decls, StmtList &Stmts);
+      StringRef Name, DeclList &Decls, StmtList &Stmts);
   void actOnAssignment(StmtList &Stmts, SMLoc Loc, Decl *D,
                        Expr *E);
   void actOnProcCall(StmtList &Stmts, SMLoc Loc, Decl *D,

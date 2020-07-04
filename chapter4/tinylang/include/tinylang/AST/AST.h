@@ -175,6 +175,7 @@ public:
   const FormalParamList &getFormalParams() {
     return Params;
   }
+  void setFormalParams(FormalParamList &FP) { Params = FP; }
   TypeDeclaration *getRetType() { return RetType; }
   void setRetType(TypeDeclaration *Ty) { RetType = Ty; }
 
