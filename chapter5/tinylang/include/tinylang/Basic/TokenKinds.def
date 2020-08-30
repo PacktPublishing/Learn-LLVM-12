@@ -1,0 +1,61 @@
+#ifndef TOK
+#define TOK(ID)
+#endif
+#ifndef PUNCTUATOR
+#define PUNCTUATOR(ID, SP) TOK(ID)
+#endif
+#ifndef KEYWORD
+#define KEYWORD(ID, FLAG) TOK(kw_ ## ID)
+#endif
+
+// These define members of the tok::* namespace.
+
+TOK(unknown)             // Not a token.
+TOK(eof)                 // End of file.
+
+TOK(identifier)          // abcde123
+
+TOK(integer_literal)     // 123, 123B, 123H
+TOK(string_literal)      // "foo", 'foo'
+
+PUNCTUATOR(plus,                "+")
+PUNCTUATOR(minus,               "-")
+PUNCTUATOR(star,                "*")
+PUNCTUATOR(slash,               "/")
+PUNCTUATOR(colonequal,          ":=")
+PUNCTUATOR(period,              ".")
+PUNCTUATOR(comma,               ",")
+PUNCTUATOR(semi,                ";")
+PUNCTUATOR(colon,               ":")
+PUNCTUATOR(equal,               "=")
+PUNCTUATOR(hash,                "#")
+PUNCTUATOR(less,                "<")
+PUNCTUATOR(greater,             ">")
+PUNCTUATOR(lessequal,           "<=")
+PUNCTUATOR(greaterequal,        ">=")
+PUNCTUATOR(l_paren,             "(")
+PUNCTUATOR(r_paren,             ")")
+
+KEYWORD(AND                         , KEYALL)
+KEYWORD(BEGIN                       , KEYALL)
+KEYWORD(CONST                       , KEYALL)
+KEYWORD(DIV                         , KEYALL)
+KEYWORD(DO                          , KEYALL)
+KEYWORD(END                         , KEYALL)
+KEYWORD(ELSE                         , KEYALL)
+KEYWORD(FROM                        , KEYALL)
+KEYWORD(IF                          , KEYALL)
+KEYWORD(IMPORT                      , KEYALL)
+KEYWORD(MOD                         , KEYALL)
+KEYWORD(MODULE                      , KEYALL)
+KEYWORD(NOT                         , KEYALL)
+KEYWORD(OR                          , KEYALL)
+KEYWORD(PROCEDURE                   , KEYALL)
+KEYWORD(RETURN                      , KEYALL)
+KEYWORD(THEN                        , KEYALL)
+KEYWORD(VAR                         , KEYALL)
+KEYWORD(WHILE                       , KEYALL)
+
+#undef KEYWORD
+#undef PUNCTUATOR
+#undef TOK
