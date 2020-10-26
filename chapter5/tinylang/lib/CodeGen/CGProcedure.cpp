@@ -89,7 +89,8 @@ void CGProcedure::optimizePhi(llvm::PHINode *Phi) {
   for (llvm::Use &U : Phi->uses()) {
     if (auto *P =
             llvm::dyn_cast<llvm::PHINode>(U.getUser()))
-      CandidatePhis.push_back(P);
+      if (P != Phi)
+        CandidatePhis.push_back(P);
   }
   Phi->replaceAllUsesWith(Same);
   Phi->eraseFromParent();
@@ -335,19 +336,22 @@ void CGProcedure::emitStmt(IfStatement *Stmt) {
   llvm::Value *Cond = emitExpr(Stmt->getCond());
   Builder.CreateCondBr(Cond, IfBB,
                        HasElse ? ElseBB : AfterIfBB);
+  sealBlock(Curr);
 
   setCurr(IfBB);
   emit(Stmt->getIfStmts());
   if (!Curr->getTerminator()) {
     Builder.CreateBr(AfterIfBB);
   }
+  sealBlock(Curr);
 
   if (HasElse) {
     setCurr(ElseBB);
-    emit(Stmt->getIfStmts());
+    emit(Stmt->getElseStmts());
     if (!Curr->getTerminator()) {
       Builder.CreateBr(AfterIfBB);
     }
+    sealBlock(Curr);
   }
   setCurr(AfterIfBB);
 }
@@ -364,6 +368,7 @@ void CGProcedure::emitStmt(WhileStatement *Stmt) {
       CGM.getLLVMCtx(), "after.while", Fn);
 
   Builder.CreateBr(WhileCondBB);
+  sealBlock(Curr);
   setCurr(WhileCondBB);
   llvm::Value *Cond = emitExpr(Stmt->getCond());
   Builder.CreateCondBr(Cond, WhileBodyBB, AfterWhileBB);
@@ -371,6 +376,8 @@ void CGProcedure::emitStmt(WhileStatement *Stmt) {
   setCurr(WhileBodyBB);
   emit(Stmt->getWhileStmts());
   Builder.CreateBr(WhileCondBB);
+  sealBlock(Curr);
+  sealBlock(WhileCondBB);
 
   setCurr(AfterWhileBB);
 }
@@ -440,10 +447,10 @@ void CGProcedure::run(ProcedureDeclaration *Proc) {
 
   auto Block = Proc->getStmts();
   emit(Proc->getStmts());
-  sealBlock(Curr);
   if (!Curr->getTerminator()) {
     Builder.CreateRetVoid();
   }
+  sealBlock(Curr);
 }
 
 void CGProcedure::run() {}
