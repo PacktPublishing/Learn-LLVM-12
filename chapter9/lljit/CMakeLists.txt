@@ -1,0 +1,14 @@
+﻿cmake_minimum_required (VERSION 3.13.4)
+
+project ("jit")
+
+find_package(LLVM REQUIRED CONFIG)
+list(APPEND CMAKE_MODULE_PATH ${LLVM_DIR})
+include(ChooseMSVCCRT)
+
+add_definitions(${LLVM_DEFINITIONS})
+include_directories(SYSTEM ${LLVM_INCLUDE_DIRS})
+llvm_map_components_to_libnames(llvm_libs Core OrcJIT Support native)
+
+add_executable(JIT JIT.cpp)
+target_link_libraries(JIT ${llvm_libs})
