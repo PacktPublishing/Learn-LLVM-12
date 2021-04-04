@@ -1,0 +1,118 @@
+diff --git a/llvm/include/llvm/Transforms/CountIR/CountIR.h b/llvm/include/llvm/Transforms/CountIR/CountIR.h
+new file mode 100644
+index 000000000000..83ab49e2a985
+--- /dev/null
++++ b/llvm/include/llvm/Transforms/CountIR/CountIR.h
+@@ -0,0 +1,16 @@
++#ifndef LLVM_TRANSFORMS_COUNTIR_H
++#define LLVM_TRANSFORMS_COUNTIR_H
++
++#include "llvm/IR/PassManager.h"
++
++namespace llvm {
++
++class CountIRPass : public PassInfoMixin<CountIRPass> {
++public:
++  PreservedAnalyses
++  run(Function &F, FunctionAnalysisManager &AM);
++};
++
++} // namespace llvm
++
++#endif
+diff --git a/llvm/lib/Passes/CMakeLists.txt b/llvm/lib/Passes/CMakeLists.txt
+index d834c0db4b45..490b5c570d0e 100644
+--- a/llvm/lib/Passes/CMakeLists.txt
++++ b/llvm/lib/Passes/CMakeLists.txt
+@@ -15,6 +15,7 @@ add_llvm_component_library(LLVMPasses
+   Analysis
+   Core
+   Coroutines
++  CountIR
+   HelloNew
+   IPO
+   InstCombine
+diff --git a/llvm/lib/Passes/PassBuilder.cpp b/llvm/lib/Passes/PassBuilder.cpp
+index 6c1a7c75d30a..0b54a843f19d 100644
+--- a/llvm/lib/Passes/PassBuilder.cpp
++++ b/llvm/lib/Passes/PassBuilder.cpp
+@@ -84,6 +84,7 @@
+ #include "llvm/Transforms/Coroutines/CoroEarly.h"
+ #include "llvm/Transforms/Coroutines/CoroElide.h"
+ #include "llvm/Transforms/Coroutines/CoroSplit.h"
++#include "llvm/Transforms/CountIR/CountIR.h"
+ #include "llvm/Transforms/HelloNew/HelloWorld.h"
+ #include "llvm/Transforms/IPO/AlwaysInliner.h"
+ #include "llvm/Transforms/IPO/Annotation2Metadata.h"
+diff --git a/llvm/lib/Passes/PassRegistry.def b/llvm/lib/Passes/PassRegistry.def
+index 877cb9ed13b3..7aee8a62b85f 100644
+--- a/llvm/lib/Passes/PassRegistry.def
++++ b/llvm/lib/Passes/PassRegistry.def
+@@ -209,6 +209,7 @@ FUNCTION_PASS("coro-early", CoroEarlyPass())
+ FUNCTION_PASS("coro-elide", CoroElidePass())
+ FUNCTION_PASS("coro-cleanup", CoroCleanupPass())
+ FUNCTION_PASS("correlated-propagation", CorrelatedValuePropagationPass())
++FUNCTION_PASS("countir", CountIRPass())
+ FUNCTION_PASS("dce", DCEPass())
+ FUNCTION_PASS("div-rem-pairs", DivRemPairsPass())
+ FUNCTION_PASS("dse", DSEPass())
+diff --git a/llvm/lib/Transforms/CMakeLists.txt b/llvm/lib/Transforms/CMakeLists.txt
+index 2a0abebdf19b..d92d4d4a8eff 100644
+--- a/llvm/lib/Transforms/CMakeLists.txt
++++ b/llvm/lib/Transforms/CMakeLists.txt
+@@ -7,6 +7,7 @@ add_subdirectory(IPO)
+ add_subdirectory(Vectorize)
+ add_subdirectory(Hello)
+ add_subdirectory(HelloNew)
++add_subdirectory(CountIR)
+ add_subdirectory(ObjCARC)
+ add_subdirectory(Coroutines)
+ add_subdirectory(CFGuard)
+diff --git a/llvm/lib/Transforms/CountIR/CMakeLists.txt b/llvm/lib/Transforms/CountIR/CMakeLists.txt
+new file mode 100644
+index 000000000000..ddf30013edc5
+--- /dev/null
++++ b/llvm/lib/Transforms/CountIR/CMakeLists.txt
+@@ -0,0 +1,10 @@
++add_llvm_component_library(LLVMCountIR
++  CountIR.cpp
++
++  DEPENDS
++  intrinsics_gen
++
++  LINK_COMPONENTS
++  Core
++  Support
++  )
+diff --git a/llvm/lib/Transforms/CountIR/CountIR.cpp b/llvm/lib/Transforms/CountIR/CountIR.cpp
+new file mode 100644
+index 000000000000..4033cff6fb0d
+--- /dev/null
++++ b/llvm/lib/Transforms/CountIR/CountIR.cpp
+@@ -0,0 +1,26 @@
++#include "llvm/Transforms/CountIR/CountIR.h"
++#include "llvm/ADT/Statistic.h"
++#include "llvm/Passes/PassBuilder.h"
++#include "llvm/Passes/PassPlugin.h"
++#include "llvm/Support/Debug.h"
++
++// Run as:
++// bin/opt --passes="countir" ../countirpass/a.ll --stats
++using namespace llvm;
++
++#define DEBUG_TYPE "countir"
++
++STATISTIC(NumOfInst, "Number of instructions.");
++STATISTIC(NumOfBB, "Number of basic blocks.");
++
++PreservedAnalyses
++CountIRPass::run(Function &F, FunctionAnalysisManager &AM) {
++  for (BasicBlock &BB : F) {
++    ++NumOfBB;
++    for (Instruction &I : BB) {
++      (void)I;
++      ++NumOfInst;
++    }
++  }
++  return PreservedAnalyses::all();
++}
