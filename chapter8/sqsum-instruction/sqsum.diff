@@ -1,0 +1,138 @@
+diff --git a/llvm/lib/Target/Mips/Mips.td b/llvm/lib/Target/Mips/Mips.td
+index 792960332bcc..8f2aad66a747 100644
+--- a/llvm/lib/Target/Mips/Mips.td
++++ b/llvm/lib/Target/Mips/Mips.td
+@@ -208,6 +208,9 @@ def FeatureUseIndirectJumpsHazard : SubtargetFeature<"use-indirect-jump-hazard",
+                                                     "true", "Use indirect jump"
+                         " guards to prevent certain speculation based attacks">;
+ 
++def FeatureSQSum : SubtargetFeature<"sqsum", "HasSQSum", "true",
++                                    "Use square-sum instruction">;
++
+ //===----------------------------------------------------------------------===//
+ // Register File, Calling Conv, Instruction Descriptions
+ //===----------------------------------------------------------------------===//
+diff --git a/llvm/lib/Target/Mips/Mips64InstrInfo.td b/llvm/lib/Target/Mips/Mips64InstrInfo.td
+index bd62a56d3008..b68f44d24e91 100644
+--- a/llvm/lib/Target/Mips/Mips64InstrInfo.td
++++ b/llvm/lib/Target/Mips/Mips64InstrInfo.td
+@@ -1264,3 +1264,14 @@ def : MipsInstAlias<"sleu $rs, $imm", (SLEUImm64 GPR64Opnd:$rs,
+ 
+ def : MipsInstAlias<"rdhwr $rt, $rs",
+                     (RDHWR64 GPR64Opnd:$rt, HWRegsOpnd:$rs, 0), 1>, GPR_64;
++
++// Unsigned Byte Mult
++def SQSUMu  : ArithLogicR<"sqsumu", GPR64Opnd, 1, II_SQSUMU>,
++             ADD_FM<0x1c, 0x28>, ISA_MIPS64, SQSUM {
++  let Pattern = [(set GPR64Opnd:$rd,
++                     (add (MipsMFLO (MipsMult GPR64Opnd:$rs,
++                                              GPR64Opnd:$rs)),
++                          (MipsMFLO (MipsMult GPR64Opnd:$rt,
++                                              GPR64Opnd:$rt)))
++                      )];
++}
+diff --git a/llvm/lib/Target/Mips/MipsInstrInfo.td b/llvm/lib/Target/Mips/MipsInstrInfo.td
+index 089fed9ec0bf..f4788cd47d69 100644
+--- a/llvm/lib/Target/Mips/MipsInstrInfo.td
++++ b/llvm/lib/Target/Mips/MipsInstrInfo.td
+@@ -258,6 +258,8 @@ def HasGINV  : Predicate<"Subtarget->hasGINV()">,
+ // TODO: Add support for FPOpFusion::Standard
+ def AllowFPOpFusion : Predicate<"TM.Options.AllowFPOpFusion =="
+                                 " FPOpFusion::Fast">;
++def HasSQSum : Predicate<"Subtarget->hasSQSum()">,
++               AssemblerPredicate<(all_of FeatureSQSum)>;
+ //===----------------------------------------------------------------------===//
+ // Mips GPR size adjectives.
+ // They are mutually exclusive.
+@@ -498,6 +500,10 @@ class MADD4 {
+   list<Predicate> AdditionalPredicates = [HasMadd4];
+ }
+ 
++class SQSUM {
++  list<Predicate> AdditionalPredicates = [HasSQSum];
++}
++
+ // Classes used for separating expansions that differ based on the ABI in
+ // use.
+ class ABI_N64 {
+diff --git a/llvm/lib/Target/Mips/MipsSchedule.td b/llvm/lib/Target/Mips/MipsSchedule.td
+index 3a5b3fe3b34b..0d80229aa95b 100644
+--- a/llvm/lib/Target/Mips/MipsSchedule.td
++++ b/llvm/lib/Target/Mips/MipsSchedule.td
+@@ -381,6 +381,7 @@ def II_RDPGPR           : InstrItinClass;
+ def II_DVP              : InstrItinClass;
+ def II_EVP              : InstrItinClass;
+ def II_YIELD            : InstrItinClass;
++def II_SQSUMU           : InstrItinClass;
+ 
+ //===----------------------------------------------------------------------===//
+ // Mips Generic instruction itineraries.
+@@ -738,5 +739,6 @@ def MipsGenericItineraries : ProcessorItineraries<[ALU, IMULDIV], [], [
+   InstrItinData<II_DMFGC0          , [InstrStage<2,  [ALU]>]>,
+   InstrItinData<II_DMTGC0          , [InstrStage<2,  [ALU]>]>,
+   InstrItinData<II_GINVI           , [InstrStage<1,  [ALU]>]>,
+-  InstrItinData<II_GINVT           , [InstrStage<1,  [ALU]>]>
++  InstrItinData<II_GINVT           , [InstrStage<1,  [ALU]>]>,
++  InstrItinData<II_SQSUMU          , [InstrStage<1,  [ALU]>]>
+ ]>;
+diff --git a/llvm/lib/Target/Mips/MipsScheduleGeneric.td b/llvm/lib/Target/Mips/MipsScheduleGeneric.td
+index f076f2f9cf10..a2257b7e1e74 100644
+--- a/llvm/lib/Target/Mips/MipsScheduleGeneric.td
++++ b/llvm/lib/Target/Mips/MipsScheduleGeneric.td
+@@ -172,7 +172,7 @@ def GenericWriteDIVU : SchedWriteRes<[GenericIssueDIV]> {
+ def : InstRW<[GenericWriteMDUtoGPR], (instrs MUL)>;
+ 
+ // mult, multu
+-def : InstRW<[GenericWriteMul], (instrs MULT, MULTu)>;
++def : InstRW<[GenericWriteMul], (instrs MULT, MULTu, SQSUMu)>;
+ 
+ // div, sdiv
+ def : InstRW<[GenericWriteDIV], (instrs PseudoSDIV, SDIV)>;
+diff --git a/llvm/lib/Target/Mips/MipsSubtarget.h b/llvm/lib/Target/Mips/MipsSubtarget.h
+index 2b4c2b19a95d..7f1f89195481 100644
+--- a/llvm/lib/Target/Mips/MipsSubtarget.h
++++ b/llvm/lib/Target/Mips/MipsSubtarget.h
+@@ -198,6 +198,9 @@ class MipsSubtarget : public MipsGenSubtargetInfo {
+   // Assume 32-bit GOT.
+   bool UseXGOT = false;
+ 
++  // Has square-sum instruction.
++  bool HasSQSum = false;
++
+   /// The minimum alignment known to hold of the stack frame on
+   /// entry to the function and which must be maintained by every function.
+   Align stackAlignment;
+@@ -336,6 +339,8 @@ public:
+ 
+   bool useXGOT() const { return UseXGOT; }
+ 
++  bool hasSQSum() const { return HasSQSum; }
++
+   bool enableLongBranchPass() const {
+     return hasStandardEncoding() || inMicroMipsMode() || allowMixed16_32();
+   }
+diff --git a/llvm/test/CodeGen/Mips/sqsum.ll b/llvm/test/CodeGen/Mips/sqsum.ll
+new file mode 100644
+index 000000000000..10c17f61694e
+--- /dev/null
++++ b/llvm/test/CodeGen/Mips/sqsum.ll
+@@ -0,0 +1,19 @@
++; RUN: llc -mtriple=mips64-linux-gnu -mattr=+sqsum < %s |\
++; RUN:  FileCheck -check-prefix=SQSUM %s
++; RUN: llc -mtriple=mips64-linux-gnu < %s |\
++; RUN:  FileCheck --check-prefix=NOSQSUM %s
++
++define i64 @hyposquare(i64 %a, i64 %b) {
++; SQSUM-LABEL: hyposquare:
++; SQSUM: sqsumu $2, $4, $5
++; NOSQSUM-LABEL: hyposquare:
++; NOSQSUM: dmult $5, $5
++; NOSQSUM: mflo $1
++; NOSQSUM: dmult $4, $4
++; NOSQSUM: mflo $2
++; NOSQSUM: addu $2, $2, $1
++  %asq = mul i64 %a, %a
++  %bsq = mul i64 %b, %b
++  %res = add i64 %asq, %bsq
++  ret i64 %res
++}
