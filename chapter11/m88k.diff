@@ -1,3 +1,9 @@
+commit 92af470694a18616a8326d7d2d9679479881fd96
+Author: Kai Nacke <kai@redstar.de>
+Date:   Sun Apr 4 10:34:53 2021 -0400
+
+    Add m88k target.
+
 diff --git a/llvm/CMakeLists.txt b/llvm/CMakeLists.txt
 index 277d0fe54d7b..59e4180fca4f 100644
 --- a/llvm/CMakeLists.txt
@@ -775,7 +781,7 @@ index 000000000000..848913370e05
 +}
 diff --git a/llvm/lib/Target/M88k/CMakeLists.txt b/llvm/lib/Target/M88k/CMakeLists.txt
 new file mode 100644
-index 000000000000..915f3478f016
+index 000000000000..68c2584a2f85
 --- /dev/null
 +++ b/llvm/lib/Target/M88k/CMakeLists.txt
 @@ -0,0 +1,33 @@
@@ -809,9 +815,161 @@ index 000000000000..915f3478f016
 +  )
 +
 +add_subdirectory(AsmParser)
-+# add_subdirectory(Disassembler)
++add_subdirectory(Disassembler)
 +add_subdirectory(TargetInfo)
 +add_subdirectory(MCTargetDesc)
+diff --git a/llvm/lib/Target/M88k/Disassembler/CMakeLists.txt b/llvm/lib/Target/M88k/Disassembler/CMakeLists.txt
+new file mode 100644
+index 000000000000..6f22cfbe8176
+--- /dev/null
++++ b/llvm/lib/Target/M88k/Disassembler/CMakeLists.txt
+@@ -0,0 +1,13 @@
++add_llvm_component_library(LLVMM88kDisassembler
++  M88kDisassembler.cpp
++
++  LINK_COMPONENTS
++  MC
++  MCDisassembler
++  Support
++  M88kDesc
++  M88kInfo
++
++  ADD_TO_COMPONENT
++  M88k
++  )
+diff --git a/llvm/lib/Target/M88k/Disassembler/M88kDisassembler.cpp b/llvm/lib/Target/M88k/Disassembler/M88kDisassembler.cpp
+new file mode 100644
+index 000000000000..9395015c4235
+--- /dev/null
++++ b/llvm/lib/Target/M88k/Disassembler/M88kDisassembler.cpp
+@@ -0,0 +1,127 @@
++//===-- M88kDisassembler.cpp - Disassembler for M88k ------------*- C++ -*-===//
++//
++// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
++// See https://llvm.org/LICENSE.txt for license information.
++// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
++//
++//===----------------------------------------------------------------------===//
++
++#include "M88k.h"
++#include "MCTargetDesc/M88kMCTargetDesc.h"
++#include "TargetInfo/M88kTargetInfo.h"
++#include "llvm/MC/MCDisassembler/MCDisassembler.h"
++#include "llvm/MC/MCFixedLenDisassembler.h"
++#include "llvm/MC/MCInst.h"
++#include "llvm/MC/MCSubtargetInfo.h"
++#include "llvm/Support/MathExtras.h"
++#include "llvm/Support/TargetRegistry.h"
++#include <cassert>
++#include <cstdint>
++
++using namespace llvm;
++
++#define DEBUG_TYPE "m88k-disassembler"
++
++using DecodeStatus = MCDisassembler::DecodeStatus;
++
++namespace {
++
++class M88kDisassembler : public MCDisassembler {
++public:
++  M88kDisassembler(const MCSubtargetInfo &STI, MCContext &Ctx)
++      : MCDisassembler(STI, Ctx) {}
++  ~M88kDisassembler() override = default;
++
++  DecodeStatus getInstruction(MCInst &instr, uint64_t &Size,
++                              ArrayRef<uint8_t> Bytes, uint64_t Address,
++                              raw_ostream &CStream) const override;
++};
++
++} // end anonymous namespace
++
++static MCDisassembler *createM88kDisassembler(const Target &T,
++                                              const MCSubtargetInfo &STI,
++                                              MCContext &Ctx) {
++  return new M88kDisassembler(STI, Ctx);
++}
++
++extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeM88kDisassembler() {
++  // Register the disassembler.
++  TargetRegistry::RegisterMCDisassembler(getTheM88kTarget(),
++                                         createM88kDisassembler);
++}
++
++static const uint16_t GPRDecoderTable[] = {
++    M88k::R0,  M88k::R1,  M88k::R2,  M88k::R3,  M88k::R4,  M88k::R5,
++    M88k::R6,  M88k::R7,  M88k::R8,  M88k::R9,  M88k::R10, M88k::R11,
++    M88k::R12, M88k::R13, M88k::R14, M88k::R15,
++
++    M88k::R16, M88k::R17, M88k::R18, M88k::R19, M88k::R20, M88k::R21,
++    M88k::R22, M88k::R23, M88k::R24, M88k::R25, M88k::R26, M88k::R27,
++    M88k::R28, M88k::R29, M88k::R30, M88k::R31,
++};
++
++static DecodeStatus DecodeGPRRegisterClass(MCInst &Inst, uint64_t RegNo,
++                                           uint64_t Address,
++                                           const void *Decoder) {
++  if (RegNo > 31)
++    return MCDisassembler::Fail;
++
++  unsigned Register = GPRDecoderTable[RegNo];
++  Inst.addOperand(MCOperand::createReg(Register));
++  return MCDisassembler::Success;
++}
++
++template <unsigned N>
++static DecodeStatus decodeUImmOperand(MCInst &Inst, uint64_t Imm) {
++  if (!isUInt<N>(Imm))
++    return MCDisassembler::Fail;
++  Inst.addOperand(MCOperand::createImm(Imm));
++  return MCDisassembler::Success;
++}
++
++static DecodeStatus decodeU5ImmOOperand(MCInst &Inst, uint64_t Imm,
++                                        uint64_t Address, const void *Decoder) {
++  return decodeUImmOperand<5>(Inst, Imm);
++}
++
++static DecodeStatus decodeU10ImmWOOperand(MCInst &Inst, uint64_t Imm,
++                                          uint64_t Address,
++                                          const void *Decoder) {
++  return decodeUImmOperand<10>(Inst, Imm);
++}
++
++static DecodeStatus decodeU16ImmOperand(MCInst &Inst, uint64_t Imm,
++                                        uint64_t Address, const void *Decoder) {
++  return decodeUImmOperand<16>(Inst, Imm);
++}
++
++static DecodeStatus decodePC26BranchOperand(MCInst &Inst, uint64_t Imm,
++                                            uint64_t Address,
++                                            const void *Decoder) {
++  if (!isUInt<26>(Imm))
++    return MCDisassembler::Fail;
++  Inst.addOperand(MCOperand::createImm(SignExtend64<26>(Imm)));
++  return MCDisassembler::Success;
++}
++
++#include "M88kGenDisassemblerTables.inc"
++
++DecodeStatus M88kDisassembler::getInstruction(MCInst &MI, uint64_t &Size,
++                                              ArrayRef<uint8_t> Bytes,
++                                              uint64_t Address,
++                                              raw_ostream &CS) const {
++  // Instruction size is always 32 bit.
++  if (Bytes.size() < 4) {
++    Size = 0;
++    return MCDisassembler::Fail;
++  }
++  Size = 4;
++
++  // Construct the instruction.
++  uint32_t Inst = 0;
++  for (uint32_t I = 0; I < Size; ++I)
++    Inst = (Inst << 8) | Bytes[I];
++
++  return decodeInstruction(DecoderTableM88k32, MI, Inst, Address, this, STI);
++}
 diff --git a/llvm/lib/Target/M88k/M88k.h b/llvm/lib/Target/M88k/M88k.h
 new file mode 100644
 index 000000000000..48f858fb8727
@@ -3158,34 +3316,6 @@ index 000000000000..dbfe67c54db9
 +  M88kMCObjectWriter.cpp
 +  M88kMCTargetDesc.cpp
 +  )
-diff --git a/llvm/lib/Target/M88k/MCTargetDesc/LLVMBuild.txt b/llvm/lib/Target/M88k/MCTargetDesc/LLVMBuild.txt
-new file mode 100644
-index 000000000000..ef6e8f02e226
---- /dev/null
-+++ b/llvm/lib/Target/M88k/MCTargetDesc/LLVMBuild.txt
-@@ -0,0 +1,22 @@
-+;===- ./lib/Target/M88k/MCTargetDesc/LLVMBuild.txt --------------*- Conf -*--===;
-+;
-+; Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
-+; See https://llvm.org/LICENSE.txt for license information.
-+; SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-+;
-+;===------------------------------------------------------------------------===;
-+;
-+; This is an LLVMBuild description file for the components in this subdirectory.
-+;
-+; For more information on the LLVMBuild system, please see:
-+;
-+;   http://llvm.org/docs/LLVMBuild.html
-+;
-+;===------------------------------------------------------------------------===;
-+
-+[component_0]
-+type = Library
-+name = M88kDesc
-+parent = M88k
-+required_libraries = MC Support M88kInfo
-+add_to_library_groups = M88k
 diff --git a/llvm/lib/Target/M88k/MCTargetDesc/M88kInstPrinter.cpp b/llvm/lib/Target/M88k/MCTargetDesc/M88kInstPrinter.cpp
 new file mode 100644
 index 000000000000..0f6d5df46add
@@ -3690,10 +3820,10 @@ index 000000000000..4737059fb8d9
 +}
 diff --git a/llvm/lib/Target/M88k/MCTargetDesc/M88kMCTargetDesc.cpp b/llvm/lib/Target/M88k/MCTargetDesc/M88kMCTargetDesc.cpp
 new file mode 100644
-index 000000000000..12305bcdac8d
+index 000000000000..61d214a26cea
 --- /dev/null
 +++ b/llvm/lib/Target/M88k/MCTargetDesc/M88kMCTargetDesc.cpp
-@@ -0,0 +1,93 @@
+@@ -0,0 +1,87 @@
 +//===-- M88kMCTargetDesc.cpp - M88k target descriptions -------------------===//
 +//
 +// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
@@ -3728,12 +3858,6 @@ index 000000000000..12305bcdac8d
 +                                      const Triple &TT,
 +                                      const MCTargetOptions &Options) {
 +  MCAsmInfo *MAI = new M88kMCAsmInfo(TT);
-+  /*
-+    MCCFIInstruction Inst = MCCFIInstruction::cfiDefCfa(
-+        nullptr, MRI.getDwarfRegNum(M88k::R15D, true),
-+        M88kMC::CFAOffsetFromInitialSP);
-+    MAI->addInitialFrameState(Inst);
-+  */
 +  return MAI;
 +}
 +
@@ -3912,41 +4036,19 @@ index 000000000000..bb3adba76d6e
 +    --disable-gdb --disable-libdecnumber --disable-readline --disable-sim
 diff --git a/llvm/lib/Target/M88k/TargetInfo/CMakeLists.txt b/llvm/lib/Target/M88k/TargetInfo/CMakeLists.txt
 new file mode 100644
-index 000000000000..af2db8a8c111
+index 000000000000..d97eaac31142
 --- /dev/null
 +++ b/llvm/lib/Target/M88k/TargetInfo/CMakeLists.txt
-@@ -0,0 +1,3 @@
+@@ -0,0 +1,9 @@
 +add_llvm_component_library(LLVMM88kInfo
 +  M88kTargetInfo.cpp
-+  )
-diff --git a/llvm/lib/Target/M88k/TargetInfo/LLVMBuild.txt b/llvm/lib/Target/M88k/TargetInfo/LLVMBuild.txt
-new file mode 100644
-index 000000000000..d8270d324f4f
---- /dev/null
-+++ b/llvm/lib/Target/M88k/TargetInfo/LLVMBuild.txt
-@@ -0,0 +1,22 @@
-+;===- ./lib/Target/M88k/TargetInfo/LLVMBuild.txt ---------------*- Conf -*--===;
-+;
-+; Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
-+; See https://llvm.org/LICENSE.txt for license information.
-+; SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-+;
-+;===------------------------------------------------------------------------===;
-+;
-+; This is an LLVMBuild description file for the components in this subdirectory.
-+;
-+; For more information on the LLVMBuild system, please see:
-+;
-+;   http://llvm.org/docs/LLVMBuild.html
-+;
-+;===------------------------------------------------------------------------===;
 +
-+[component_0]
-+type = Library
-+name = M88kInfo
-+parent = M88k
-+required_libraries = Support
-+add_to_library_groups = M88k
++  LINK_COMPONENTS
++  Support
++
++  ADD_TO_COMPONENT
++  M88k
++  )
 diff --git a/llvm/lib/Target/M88k/TargetInfo/M88kTargetInfo.cpp b/llvm/lib/Target/M88k/TargetInfo/M88kTargetInfo.cpp
 new file mode 100644
 index 000000000000..afc6e7c54330
