@@ -3,11 +3,10 @@
 #include "tinylang/Basic/Version.h"
 #include "tinylang/CodeGen/CodeGenerator.h"
 #include "tinylang/Parser/Parser.h"
-#include "llvm/CodeGen/CommandFlags.h"
+#include "llvm/CodeGen/CommandFlags.inc"
 #include "llvm/IR/IRPrintingPasses.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Support/CommandLine.h"
-#include "llvm/Support/Host.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/TargetRegistry.h"
@@ -15,12 +14,6 @@
 #include "llvm/Support/ToolOutputFile.h"
 #include "llvm/Support/WithColor.h"
 
-#include "llvm/Passes/PassBuilder.h" // New
-#include "llvm/Passes/PassPlugin.h" // New
-#include "llvm/Analysis/AliasAnalysis.h" // New
-#include "llvm/Analysis/TargetTransformInfo.h" // New
-
-using namespace llvm;
 using namespace tinylang;
 
 static llvm::cl::list<std::string>
@@ -34,35 +27,6 @@ static cl::opt<bool>
     EmitLLVM("emit-llvm",
              cl::desc("Emit IR code instead of assembler"),
              cl::init(false));
-
-static cl::opt<signed char> OptLevel(
-    cl::desc("Setting the optimization level:"),
-    cl::ZeroOrMore,
-    cl::values(
-        clEnumValN(3, "O", "Equivalent to -O3"),
-        clEnumValN(0, "O0", "Optimization level 0"),
-        clEnumValN(1, "O1", "Optimization level 1"),
-        clEnumValN(2, "O2", "Optimization level 2"),
-        clEnumValN(3, "O3", "Optimization level 3"),
-        clEnumValN(-1, "Os",
-                   "Like -O2 with extra optimizations "
-                   "for size"),
-        clEnumValN(
-            -2, "Oz",
-            "Like -Os but reduces code size further")),
-    cl::init(0));
-
-static cl::opt<bool>
-    DebugPM("debug-pass-manager", cl::Hidden,
-            cl::desc("Print PM debugging information"));
-
-static cl::opt<std::string> PassPipeline(
-    "passes",
-    cl::desc("A description of the pass pipeline"));
-
-static cl::list<std::string> PassPlugins(
-    "load-pass-plugin",
-    cl::desc("Load passes from plugin library"));
 
 static const char *Head = "tinylang - Tinylang compiler";
 
@@ -81,47 +45,44 @@ void printVersion(llvm::raw_ostream &OS) {
 
 llvm::TargetMachine *
 createTargetMachine(const char *Argv0) {
+  llvm::TargetOptions TargetOptions =
+      InitTargetOptionsFromCodeGenFlags();
+  std::string CPUStr = getCPUStr();
+  std::string FeatureStr = getFeaturesStr();
+
   llvm::Triple Triple = llvm::Triple(
       !MTriple.empty()
           ? llvm::Triple::normalize(MTriple)
           : llvm::sys::getDefaultTargetTriple());
 
-  llvm::TargetOptions TargetOptions =
-      codegen::InitTargetOptionsFromCodeGenFlags(
-          Triple);
-  std::string CPUStr = codegen::getCPUStr();
-  std::string FeatureStr = codegen::getFeaturesStr();
-
   std::string Error;
   const llvm::Target *Target =
-      llvm::TargetRegistry::lookupTarget(
-          codegen::getMArch(), Triple, Error);
+      llvm::TargetRegistry::lookupTarget(MArch, Triple,
+                                         Error);
 
   if (!Target) {
-    llvm::WithColor::error(llvm::errs(), Argv0)
-        << Error;
+    llvm::WithColor::error(errs(), Argv0) << Error;
     return nullptr;
   }
 
   llvm::TargetMachine *TM = Target->createTargetMachine(
-      Triple.getTriple(), CPUStr, FeatureStr,
-      TargetOptions,
-      llvm::Optional<llvm::Reloc::Model>(
-          codegen::getRelocModel()));
+      Triple.getTriple(), CPUStr, FeatureStr, TargetOptions,
+      llvm::Optional<llvm::Reloc::Model>(RelocModel));
   return TM;
 }
 
-std::string outputFilename(StringRef InputFilename) {
-  CodeGenFileType FileType = codegen::getFileType();
+bool emit(StringRef Argv0, llvm::Module *M,
+          llvm::TargetMachine *TM,
+          StringRef InputFilename) {
   std::string OutputFilename;
   if (InputFilename == "-") {
     OutputFilename = "-";
   } else {
     if (InputFilename.endswith(".mod") ||
         InputFilename.endswith(".mod"))
-      OutputFilename = InputFilename.drop_back(4).str();
+      OutputFilename = InputFilename.drop_back(4);
     else
-      OutputFilename = InputFilename.str();
+      OutputFilename = InputFilename;
     switch (FileType) {
     case CGFT_AssemblyFile:
       OutputFilename.append(EmitLLVM ? ".ll" : ".s");
@@ -134,119 +95,30 @@ std::string outputFilename(StringRef InputFilename) {
       break;
     }
   }
-  return OutputFilename;
-}
-
-#define HANDLE_EXTENSION(Ext)                          \
-  llvm::PassPluginLibraryInfo get##Ext##PluginInfo();
-#include "llvm/Support/Extension.def"
-
-bool emit(StringRef Argv0, llvm::Module *M,
-          llvm::TargetMachine *TM,
-          StringRef InputFilename) {
-
-  // Create the optimization pipeline
-  PassBuilder PB(TM);
-
-  // Load requested pass plugins and let them register
-  // pass builder callbacks
-  for (auto &PluginFN : PassPlugins) {
-    auto PassPlugin = PassPlugin::Load(PluginFN);
-    if (!PassPlugin) {
-      WithColor::error(errs(), Argv0)
-          << "Failed to load passes from '" << PluginFN
-          << "'. Request ignored.\n";
-      continue;
-    }
-
-    PassPlugin->registerPassBuilderCallbacks(PB);
-  }
-
-#define HANDLE_EXTENSION(Ext)                          \
-  get##Ext##PluginInfo().RegisterPassBuilderCallbacks( \
-      PB);
-#include "llvm/Support/Extension.def"
-
-  LoopAnalysisManager LAM(DebugPM);
-  FunctionAnalysisManager FAM(DebugPM);
-  CGSCCAnalysisManager CGAM(DebugPM);
-  ModuleAnalysisManager MAM(DebugPM);
-
-  // Register the AA manager first so that our version
-  // is the one used.
-  FAM.registerPass(
-      [&] { return PB.buildDefaultAAPipeline(); });
-
-  // Register all the basic analyses with the managers.
-  PB.registerModuleAnalyses(MAM);
-  PB.registerCGSCCAnalyses(CGAM);
-  PB.registerFunctionAnalyses(FAM);
-  PB.registerLoopAnalyses(LAM);
-  PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
-
-  PB.registerPipelineStartEPCallback(
-      [](ModulePassManager &MPM,
-         PassBuilder::OptimizationLevel Level) {
-        llvm::outs() << "Run\n";
-      });
-
-  ModulePassManager MPM(DebugPM);
-
-  if (!PassPipeline.empty()) {
-    if (auto Err = PB.parsePassPipeline(
-            MPM, PassPipeline)) {
-      WithColor::error(errs(), Argv0)
-          << toString(std::move(Err)) << "\n";
-      return false;
-    }
-  } else {
-    StringRef DefaultPass;
-    switch (OptLevel) {
-    case 0: DefaultPass = "default<O0>"; break;
-    case 1: DefaultPass = "default<O1>"; break;
-    case 2: DefaultPass = "default<O2>"; break;
-    case 3: DefaultPass = "default<O3>"; break;
-    case -1: DefaultPass = "default<Os>"; break;
-    case -2: DefaultPass = "default<Oz>"; break;
-    }
-    if (auto Err = PB.parsePassPipeline(
-            MPM, DefaultPass)) {
-      WithColor::error(errs(), Argv0)
-          << toString(std::move(Err)) << "\n";
-      return false;
-    }
-  }
 
   // Open the file.
   std::error_code EC;
   sys::fs::OpenFlags OpenFlags = sys::fs::OF_None;
-  CodeGenFileType FileType = codegen::getFileType();
   if (FileType == CGFT_AssemblyFile)
     OpenFlags |= sys::fs::OF_Text;
   auto Out = std::make_unique<llvm::ToolOutputFile>(
-      outputFilename(InputFilename), EC, OpenFlags);
+      OutputFilename, EC, OpenFlags);
   if (EC) {
-    WithColor::error(errs(), Argv0)
-        << EC.message() << '\n';
+    WithColor::error(errs(), Argv0) << EC.message() << '\n';
     return false;
   }
 
-  legacy::PassManager CodeGenPM;
-  CodeGenPM.add(createTargetTransformInfoWrapperPass(
-      TM->getTargetIRAnalysis()));
+  legacy::PassManager PM;
   if (FileType == CGFT_AssemblyFile && EmitLLVM) {
-    CodeGenPM.add(createPrintModulePass(Out->os()));
+    PM.add(createPrintModulePass(Out->os()));
   } else {
-    if (TM->addPassesToEmitFile(CodeGenPM, Out->os(),
-                                nullptr, FileType)) {
-      WithColor::error()
-          << "No support for file type\n";
+    if (TM->addPassesToEmitFile(PM, Out->os(), nullptr,
+                                FileType)) {
+      WithColor::error() << "No support for file type\n";
       return false;
     }
   }
-
-  MPM.run(*M, MAM);
-  CodeGenPM.run(*M);
+  PM.run(*M);
   Out->keep();
   return true;
 }
@@ -262,25 +134,22 @@ int main(int Argc, const char **Argv) {
   llvm::cl::SetVersionPrinter(&printVersion);
   llvm::cl::ParseCommandLineOptions(Argc, Argv, Head);
 
-  if (codegen::getMCPU() == "help" ||
-      std::any_of(codegen::getMAttrs().begin(),
-                  codegen::getMAttrs().end(),
+  if (MCPU == "help" ||
+      std::any_of(MAttrs.begin(), MAttrs.end(),
                   [](const std::string &a) {
                     return a == "help";
                   })) {
-    auto Triple =
-        llvm::Triple(LLVM_DEFAULT_TARGET_TRIPLE);
+    auto Triple = llvm::Triple(LLVM_DEFAULT_TARGET_TRIPLE);
     std::string ErrMsg;
-    if (auto target =
-            llvm::TargetRegistry::lookupTarget(
-                Triple.getTriple(), ErrMsg)) {
+    if (auto target = llvm::TargetRegistry::lookupTarget(
+            Triple.getTriple(), ErrMsg)) {
       llvm::errs() << "Targeting " << target->getName()
                    << ". ";
-      // this prints the available CPUs and features of
-      // the target to stderr...
-      target->createMCSubtargetInfo(
-          Triple.getTriple(), codegen::getCPUStr(),
-          codegen::getFeaturesStr());
+      // this prints the available CPUs and features of the
+      // target to stderr...
+      target->createMCSubtargetInfo(Triple.getTriple(),
+                                    getCPUStr(),
+                                    getFeaturesStr());
     } else {
       llvm::errs() << ErrMsg << "\n";
       exit(EXIT_FAILURE);

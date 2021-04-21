@@ -387,11 +387,10 @@ void CGProcedure::emitStmt(AssignmentStatement *Stmt) {
     if (!IdxList.empty()) {
       if (Base->getType()->isPointerTy()) {
         Base = Builder.CreateInBoundsGEP(Base, IdxList);
-        //Builder.CreateStore(Val, Base);
+        Builder.CreateStore(Val, Base);
       }
       else {
-        llvm::report_fatal_error("not implemented");
-        //Builder.CreateInsertValue(Base, Val, IdxList);
+        llvm::report_fatal_error("should not happen");
       }
     }
   }
