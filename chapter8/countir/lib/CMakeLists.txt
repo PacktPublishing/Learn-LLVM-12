@@ -1,10 +1,2 @@
-add_llvm_component_library(LLVMCountIR
-  CountIR.cpp
+add_llvm_library(CountIR MODULE CountIR.cpp)
 
-  DEPENDS
-  intrinsics_gen
-
-  LINK_COMPONENTS
-  Core
-  Support
-  )
