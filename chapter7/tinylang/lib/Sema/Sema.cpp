@@ -493,7 +493,6 @@ void Sema::actOnIndexSelector(Expr *Desig, SMLoc Loc,
 
 void Sema::actOnFieldSelector(Expr *Desig, SMLoc Loc,
                               StringRef Name) {
-llvm::errs() << "Sema::actOnFieldSelector " << Name << "\n";
   // TODO Implement
   if (auto *D = dyn_cast<Designator>(Desig)) {
     if (auto *R =
@@ -526,7 +525,6 @@ void Sema::actOnDereferenceSelector(Expr *Desig,
 }
 
 Expr *Sema::actOnDesignator(Decl *D) {
-llvm::errs() << "Sema::actOnDesignator " << D->getName() << "\n";
   if (!D)
     return nullptr;
   if (auto *V = dyn_cast<VariableDeclaration>(D))
