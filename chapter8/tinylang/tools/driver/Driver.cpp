@@ -23,6 +23,8 @@
 using namespace llvm;
 using namespace tinylang;
 
+static codegen::RegisterCodeGenFlags CGF;
+
 static llvm::cl::list<std::string>
     InputFiles(cl::Positional, cl::desc("<input-files>"));
 
