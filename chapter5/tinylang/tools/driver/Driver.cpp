@@ -17,6 +17,8 @@
 using namespace llvm;
 using namespace tinylang;
 
+static codegen::RegisterCodeGenFlags CGF;
+
 static llvm::cl::list<std::string>
     InputFiles(llvm::cl::Positional,
                llvm::cl::desc("<input-files>"));
