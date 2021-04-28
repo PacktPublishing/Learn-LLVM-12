@@ -368,6 +368,9 @@ void CGProcedure::emitStmt(AssignmentStatement *Stmt) {
     writeVariable(Curr, Desig->getDecl(), Val);
   else {
     llvm::SmallVector<llvm::Value *, 4> IdxList;
+    // First index for GEP.
+    IdxList.push_back(
+        llvm::ConstantInt::get(CGM.Int32Ty, 0));
     auto *Base =
         readVariable(Curr, Desig->getDecl(), false);
     for (auto I = Selectors.begin(), E = Selectors.end();
@@ -378,7 +381,7 @@ void CGProcedure::emitStmt(AssignmentStatement *Stmt) {
       } else if (auto *FieldSel =
                      llvm::dyn_cast<FieldSelector>(*I)) {
         llvm::Value *V = llvm::ConstantInt::get(
-            CGM.Int64Ty, FieldSel->getIndex());
+            CGM.Int32Ty, FieldSel->getIndex());
         IdxList.push_back(V);
       } else {
         llvm::report_fatal_error("not implemented");
