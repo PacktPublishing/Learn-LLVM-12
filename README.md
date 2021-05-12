@@ -42,7 +42,7 @@ This book is for compiler developers, enthusiasts, and engineers who are new to 
 
 With the following software and hardware list you can run all code files present in the book (Chapter 1-12).
 ### Software and Hardware List
-| Chapter | Software required | OS required |
+| No. | Software required | OS required |
 | -------- | ------------------------------------ | ----------------------------------- |
 | 1 | C/C++ compiler | Windows, Mac OS X, and Linux (Any) |
 | 2 | CMake 3.13.4 or later | Windows, Mac OS X, and Linux (Any) |
