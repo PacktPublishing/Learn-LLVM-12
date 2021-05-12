@@ -1,13 +1,15 @@
 # Learn-LLVM-9
 <a href="https://www.packtpub.com/in/cloud-networking/learn-llvm-11?utm_source=github&utm_medium=repository&utm_campaign=9781786461629"><img src="https://www.packtpub.com/media/catalog/product/cache/4cdce5a811acc0d2926d7f857dceb83b/9/7/9781839213502-original_188.jpeg" alt="Useful Links" height="256px" align="right"></a>
 
-This is the code repository for [Useful Links](https://www.packtpub.com/in/cloud-networking/learn-llvm-11?utm_source=github&utm_medium=repository&utm_campaign=9781786461629), published by Packt.
+This is the code repository for [Learn LLVM 12](https://www.packtpub.com/in/cloud-networking/learn-llvm-11?utm_source=github&utm_medium=repository&utm_campaign=9781786461629), published by Packt.
 
 **A beginner's guide to learning LLVM compiler tools and core libraries with C++**
 
 ## What is this book about?
 LLVM was built to bridge the gap between compiler textbooks and actual compiler development. It provides a modular codebase and advanced tools which help developers to build compilers easily. This book provides a practical introduction to LLVM, gradually helping you navigate through complex scenarios with ease when it comes to building and working with compilers.
+
 You’ll start by configuring, building, and installing LLVM libraries, tools, and external projects. Next, the book will introduce you to LLVM design and how it works in practice during each LLVM compiler stage: frontend, optimizer, and backend. Using a subset of a real programming language as an example, you will then learn how to develop a frontend and generate LLVM IR, hand it over to the optimization pipeline, and generate machine code from it. Later chapters will show you how to extend LLVM with a new pass and how instruction selection in LLVM works. You’ll also focus on Just-in-Time compilation issues and the current state of JIT-compilation support that LLVM provides, before finally going on to understand how to develop a new backend for LLVM.
+
 By the end of this LLVM book, you will have gained real-world experience in working with the LLVM compiler development framework with the help of hands-on examples and source code snippets.
 
 This book covers the following exciting features:
@@ -49,6 +51,9 @@ With the following software and hardware list you can run all code files present
 | 6 | Git 1.7.10 or later | Windows, Mac OS X, and Linux (Any) |
 
 We also provide a PDF file that has color images of the screenshots/diagrams used in this book. [Click here to download it](https://static.packt-cdn.com/downloads/9781839213502_ColorImages.pdf).
+
+## Code in Action
+Please visit the following link to check the CiA videos: https://bit.ly/3nllhED
 
 ### Related products
 * LLVM Techniques, Tips, and Best Practices Clang and Middle-End Libraries [[Packt]](https://www.packtpub.com/product/llvm-techniques-tips-and-best-practices-clang-and-middle-end-libraries/9781838824952?utm_source=github&utm_medium=repository&utm_campaign=9781838824952) [[Amazon]](https://www.amazon.com/dp/1838824952)
