@@ -38,7 +38,8 @@ for (uint32_t I = 0; I < Size; ++I)
 ```
 
 ## Errata
-Page 6: _.....with a package manager. The easiest way to install all the software is to use the Chocolately_ **should be read as** _.....with a package manager. The easiest way to install all the software is to use the Chocolatey_
+Page 6, paragraph 2:
+_.....with a package manager. The easiest way to install all the software is to use the Chocolately_ **should be read as** _.....with a package manager. The easiest way to install all the software is to use the Chocolatey_
 
 Page 33: 
 
