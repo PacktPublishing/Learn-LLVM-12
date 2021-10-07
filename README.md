@@ -44,7 +44,7 @@ _.....with a package manager. The easiest way to install all the software is to 
 Page 33, bullet point no. 5:
 _You should see the friendly message. Please also check that the Basic library was installed_:
 ```
-**$ ls ../llvm-12/lib/libtinylang***
+**$ ls ../llvm-12/lib/libtinylang**
 ````
 _This will show that there is a libtinylangBasic.a file._
 
