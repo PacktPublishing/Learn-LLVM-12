@@ -44,10 +44,15 @@ _.....with a package manager. The easiest way to install all the software is to 
 Page 33, bullet point no. 5:
 _You should see the friendly message. Please also check that the Basic library was installed_:
 ```
-**$ ls ../llvm-12/lib/libtinylang**
+$ ls ../llvm-12/lib/libtinylang*
 ````
 _This will show that there is a libtinylangBasic.a file._
-
+**Should be read as**
+_You should see the friendly message. Please also check that the Basic library was installed_:
+```
+$ ls ../llvm-12/lib/tinylang*
+```
+_This will show that there is a tinylangBasic.lib file._
 
 **Following is what you need for this book:**
 This book is for compiler developers, enthusiasts, and engineers who are new to LLVM and are interested in learning about the LLVM framework. It is also useful for C++ software engineers looking to use compiler-based tools for code analysis and improvement, as well as casual users of LLVM libraries who want to gain more knowledge of LLVM essentials. Intermediate-level experience with C++ programming is mandatory to understand the concepts covered in this book more effectively.
