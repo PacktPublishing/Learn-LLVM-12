@@ -37,6 +37,10 @@ uint32_t Inst = 0;
 for (uint32_t I = 0; I < Size; ++I)
 ```
 
+## Errata
+Page 6: _.....with a package manager. The easiest way to install all the software is to use the Chocolately_ **should be read as** _.....with a package manager. The easiest way to install all the software is to use the Chocolatey_
+
+Page 33: 
 **Following is what you need for this book:**
 This book is for compiler developers, enthusiasts, and engineers who are new to LLVM and are interested in learning about the LLVM framework. It is also useful for C++ software engineers looking to use compiler-based tools for code analysis and improvement, as well as casual users of LLVM libraries who want to gain more knowledge of LLVM essentials. Intermediate-level experience with C++ programming is mandatory to understand the concepts covered in this book more effectively.
 
