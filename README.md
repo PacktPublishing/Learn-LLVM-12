@@ -48,7 +48,7 @@ $ ls ../llvm-12/lib/libtinylang*
 ````
 _This will show that there is a libtinylangBasic.a file._
 
-**Should be read as**
+**Should be read as:**
 
 
 _You should see the friendly message. Please also check that the Basic library was installed_:
