@@ -41,7 +41,12 @@ for (uint32_t I = 0; I < Size; ++I)
 Page 6, paragraph 2:
 _.....with a package manager. The easiest way to install all the software is to use the Chocolately_ **should be read as** _.....with a package manager. The easiest way to install all the software is to use the Chocolatey_
 
-Page 33: 
+Page 33, bullet point no. 5:
+_You should see the friendly message. Please also check that the Basic library was installed_:
+```
+**$ ls ../llvm-12/lib/libtinylang***
+````
+_This will show that there is a libtinylangBasic.a file._
 
 
 **Following is what you need for this book:**
