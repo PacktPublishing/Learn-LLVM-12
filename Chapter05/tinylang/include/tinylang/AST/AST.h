@@ -217,6 +217,7 @@ public:
     EK_Int,
     EK_Bool,
     EK_Var,
+    EK_Param,
     EK_Const,
     EK_Func,
   };
@@ -303,18 +304,30 @@ public:
 };
 
 class VariableAccess : public Expr {
-  Decl *Var;
+  VariableDeclaration *Var;
 
 public:
   VariableAccess(VariableDeclaration *Var)
       : Expr(EK_Var, Var->getType(), false), Var(Var) {}
-  VariableAccess(FormalParameterDeclaration *Param)
-      : Expr(EK_Var, Param->getType(), false), Var(Param) {}
 
   Decl *getDecl() { return Var; }
 
   static bool classof(const Expr *E) {
     return E->getKind() == EK_Var;
+  }
+};
+
+class FormalParameterAccess : public Expr {
+  FormalParameterDeclaration *Param;
+
+public:
+  FormalParameterAccess(FormalParameterDeclaration *Param)
+      : Expr(EK_Param, Param->getType(), false), Param(Param) {}
+
+  Decl *getDecl() { return Param; }
+
+  static bool classof(const Expr *E) {
+    return E->getKind() == EK_Param;
   }
 };
 
@@ -372,14 +385,14 @@ public:
 };
 
 class AssignmentStatement : public Stmt {
-  VariableDeclaration *Var;
+  Decl *D;
   Expr *E;
 
 public:
-  AssignmentStatement(VariableDeclaration *Var, Expr *E)
-      : Stmt(SK_Assign), Var(Var), E(E) {}
+  AssignmentStatement(Decl *D, Expr *E)
+      : Stmt(SK_Assign), D(D), E(E) {}
 
-  VariableDeclaration *getVar() { return Var; }
+  Decl *getDecl() { return D; }
   Expr *getExpr() { return E; }
 
   static bool classof(const Stmt *S) {

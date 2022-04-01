@@ -53,7 +53,7 @@ void Sema::checkFormalAndActualParameters(
           Loc,
           diag::
               err_type_of_formal_and_actual_parameter_not_compatible);
-    if (F->isVar() && isa<VariableAccess>(Arg))
+    if (F->isVar() && isa<FormalParameterAccess>(Arg))
       Diags.report(Loc,
                    diag::err_var_parameter_requires_var);
   }
@@ -195,16 +195,20 @@ void Sema::actOnProcedureDeclaration(
 
 void Sema::actOnAssignment(StmtList &Stmts, SMLoc Loc,
                            Decl *D, Expr *E) {
+  TypeDeclaration *type;
   if (auto Var = dyn_cast<VariableDeclaration>(D)) {
-    if (Var->getType() != E->getType()) {
-      Diags.report(
-          Loc, diag::err_types_for_operator_not_compatible,
-          tok::getPunctuatorSpelling(tok::colonequal));
-    }
-    Stmts.push_back(new AssignmentStatement(Var, E));
+    type = Var->getType();
+  } else if (auto Param = dyn_cast<FormalParameterDeclaration>(D)) {
+    type = Param->getType();
   } else if (D) {
     // TODO Emit error
   }
+  if (type != E->getType()) {
+    Diags.report(
+        Loc, diag::err_types_for_operator_not_compatible,
+        tok::getPunctuatorSpelling(tok::colonequal));
+  }
+  Stmts.push_back(new AssignmentStatement(D, E));
 }
 
 void Sema::actOnProcCall(StmtList &Stmts, SMLoc Loc,
@@ -353,7 +357,7 @@ Expr *Sema::actOnPrefixExpression(Expr *E,
   if (Op.getKind() == tok::minus) {
     bool Ambiguous = true;
     if (isa<IntegerLiteral>(E) || isa<VariableAccess>(E) ||
-        isa<ConstantAccess>(E))
+        isa<FormalParameterAccess>(E) || isa<ConstantAccess>(E))
       Ambiguous = false;
     else if (auto *Infix = dyn_cast<InfixExpression>(E)) {
       tok::TokenKind Kind =
@@ -389,7 +393,7 @@ Expr *Sema::actOnVariable(Decl *D) {
   if (auto *V = dyn_cast<VariableDeclaration>(D))
     return new VariableAccess(V);
   else if (auto *P = dyn_cast<FormalParameterDeclaration>(D))
-    return new VariableAccess(P);
+    return new FormalParameterAccess(P);
   else if (auto *C = dyn_cast<ConstantDeclaration>(D)) {
     if (C == TrueConst)
       return TrueLiteral;
