@@ -85,3 +85,7 @@ Please visit the following link to check the CiA videos: https://bit.ly/3nllhED
 He has been working in the IT industry for more than 20 years and has great experience in the development and architecture of business and enterprise applications. In his current role, he evolves an LLVM/Clang-based compiler.
 For some years, he was the maintainer of LDC, the LLVM-based D compiler. He is the author of D Web Development, published by Packt. In the past, he was also a speaker in the LLVM developer room at the FOSDEM.
 
+### Download a free PDF
+
+ <i>If you have already purchased a print or Kindle version of this book, you can get a DRM-free PDF version at no cost.<br>Simply click on the link to claim your free PDF.</i>
+<p align="center"> <a href="https://packt.link/free-ebook/9781839213502">https://packt.link/free-ebook/9781839213502 </a> </p>
