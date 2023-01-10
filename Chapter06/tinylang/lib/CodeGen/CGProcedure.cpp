@@ -297,7 +297,7 @@ llvm::Value *CGProcedure::emitExpr(Expr *E) {
     return emitPrefixExpr(Prefix);
   } else if (auto *Var = llvm::dyn_cast<Designator>(E)) {
     auto *Decl = Var->getDecl();
-    llvm::Value *Val = readVariable(Curr, Decl);
+    llvm::Value *Val = readVariable(Curr, Decl, false);
     // With more languages features in place, here you
     // need to add array and record support.
     auto &Selectors = Var->getSelectors();
@@ -307,6 +307,9 @@ llvm::Value *CGProcedure::emitExpr(Expr *E) {
       if (auto *IdxSel =
               llvm::dyn_cast<IndexSelector>(*I)) {
         llvm::SmallVector<llvm::Value *, 4> IdxList;
+        // First index for GEP.
+        IdxList.push_back(
+            llvm::ConstantInt::get(CGM.Int32Ty, 0));
         while (I != E) {
           if (auto *Sel =
                   llvm::dyn_cast<IndexSelector>(*I)) {
@@ -321,11 +324,14 @@ llvm::Value *CGProcedure::emitExpr(Expr *E) {
       } else if (auto *FieldSel =
                      llvm::dyn_cast<FieldSelector>(*I)) {
         llvm::SmallVector<llvm::Value *, 4> IdxList;
+        // First index for GEP.
+        IdxList.push_back(
+            llvm::ConstantInt::get(CGM.Int32Ty, 0));
         while (I != E) {
           if (auto *Sel =
                   llvm::dyn_cast<FieldSelector>(*I)) {
             llvm::Value *V = llvm::ConstantInt::get(
-                CGM.Int64Ty, Sel->getIndex());
+                CGM.Int32Ty, Sel->getIndex());
             IdxList.push_back(V);
             ++I;
           } else
