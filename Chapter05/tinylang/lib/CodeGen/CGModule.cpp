@@ -47,7 +47,9 @@ void CGModule::run(ModuleDeclaration *Mod) {
       llvm::GlobalVariable *V = new llvm::GlobalVariable(
           *M, convertType(Var->getType()),
           /*isConstant=*/false,
-          llvm::GlobalValue::PrivateLinkage, nullptr,
+          llvm::GlobalValue::PrivateLinkage, 
+          llvm::ConstantAggregateZero::get(
+                  convertType(Var->getType())),
           mangleName(Var));
       Globals[Var] = V;
     } else if (auto *Proc =
