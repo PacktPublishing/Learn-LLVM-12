@@ -97,10 +97,12 @@ void CGModule::run(ModuleDeclaration *Mod) {
     if (auto *Var =
             llvm::dyn_cast<VariableDeclaration>(Decl)) {
       // Create global variables
+      llvm::Type *T = convertType(Var->getType());
       llvm::GlobalVariable *V = new llvm::GlobalVariable(
-          *M, convertType(Var->getType()),
+          *M, T,
           /*isConstant=*/false,
-          llvm::GlobalValue::PrivateLinkage, nullptr,
+          llvm::GlobalValue::PrivateLinkage,
+          llvm::UndefValue::get(T),
           mangleName(Var));
       Globals[Var] = V;
       if (CGDebugInfo *Dbg = getDbgInfo())
