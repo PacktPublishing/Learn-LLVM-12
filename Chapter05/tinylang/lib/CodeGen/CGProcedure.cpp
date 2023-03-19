@@ -296,6 +296,10 @@ llvm::Value *CGProcedure::emitExpr(Expr *E) {
     // With more languages features in place, here you need
     // to add array and record support.
     return readVariable(Curr, Decl);
+  } else if (auto *Var =
+                 llvm::dyn_cast<FormalParameterAccess>(E)) {
+    auto *Decl = Var->getDecl();
+    return readVariable(Curr, Decl);
   } else if (auto *Const =
                  llvm::dyn_cast<ConstantAccess>(E)) {
     return emitExpr(Const->getDecl()->getExpr());
@@ -313,7 +317,7 @@ llvm::Value *CGProcedure::emitExpr(Expr *E) {
 
 void CGProcedure::emitStmt(AssignmentStatement *Stmt) {
   auto *Val = emitExpr(Stmt->getExpr());
-  writeVariable(Curr, Stmt->getVar(), Val);
+  writeVariable(Curr, Stmt->getDecl(), Val);
 }
 
 void CGProcedure::emitStmt(ProcedureCallStatement *Stmt) {
