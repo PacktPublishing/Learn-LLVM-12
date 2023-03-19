@@ -114,7 +114,8 @@ void CGProcedure::writeVariable(llvm::BasicBlock *BB,
       writeLocalVariable(BB, D, Val);
     else if (V->getEnclosingDecl() ==
              CGM.getModuleDeclaration()) {
-      Builder.CreateStore(Val, CGM.getGlobal(D));
+      llvm::Instruction *Inst = Builder.CreateStore(Val, CGM.getGlobal(D));
+      CGM.decorateInst(Inst, V->getType());
     } else
       llvm::report_fatal_error(
           "Nested procedures not yet supported");
@@ -122,7 +123,8 @@ void CGProcedure::writeVariable(llvm::BasicBlock *BB,
                  llvm::dyn_cast<FormalParameterDeclaration>(
                      D)) {
     if (FP->isVar()) {
-      Builder.CreateStore(Val, FormalParams[FP]);
+      llvm::Instruction *Inst = Builder.CreateStore(Val, FormalParams[FP]);
+      CGM.decorateInst(Inst, FP->getType());
     } else
       writeLocalVariable(BB, D, Val);
   } else
@@ -140,7 +142,9 @@ llvm::Value *CGProcedure::readVariable(llvm::BasicBlock *BB,
       auto *Global = CGM.getGlobal(D);
       if (!LoadVal)
         return Global;
-      return Builder.CreateLoad(mapType(D), Global);
+      llvm::Instruction *Inst = Builder.CreateLoad(mapType(D), Global);
+      CGM.decorateInst(Inst, V->getType());
+      return Inst;
     } else
       llvm::report_fatal_error(
           "Nested procedures not yet supported");
@@ -150,9 +154,11 @@ llvm::Value *CGProcedure::readVariable(llvm::BasicBlock *BB,
     if (FP->isVar()) {
       if (!LoadVal)
         return FormalParams[FP];
-      return Builder.CreateLoad(
+      llvm::Instruction *Inst = Builder.CreateLoad(
           mapType(FP)->getPointerElementType(),
           FormalParams[FP]);
+      CGM.decorateInst(Inst, FP->getType());
+      return Inst;
     } else
       return readLocalVariable(BB, D);
   } else
@@ -315,8 +321,10 @@ llvm::Value *CGProcedure::emitExpr(Expr *E) {
             break;
         }
         Val = Builder.CreateInBoundsGEP(Val, IdxList);
-        Val = Builder.CreateLoad(
+        llvm::Instruction *Inst = Builder.CreateLoad(
             Val->getType()->getPointerElementType(), Val);
+        CGM.decorateInst(Inst, Var->getType());
+        Val = Inst;
       } else if (auto *FieldSel =
                      llvm::dyn_cast<FieldSelector>(*I)) {
         llvm::SmallVector<llvm::Value *, 4> IdxList;
@@ -331,13 +339,17 @@ llvm::Value *CGProcedure::emitExpr(Expr *E) {
             break;
         }
         Val = Builder.CreateInBoundsGEP(Val, IdxList);
-        Val = Builder.CreateLoad(
+        llvm::Instruction *Inst = Builder.CreateLoad(
             Val->getType()->getPointerElementType(), Val);
+        CGM.decorateInst(Inst, Var->getType());
+        Val = Inst;
       } else if (auto *DerefSel =
                      llvm::dyn_cast<DereferenceSelector>(
                          *I)) {
-        Val = Builder.CreateLoad(
+        llvm::Instruction *Inst = Builder.CreateLoad(
             Val->getType()->getPointerElementType(), Val);
+        CGM.decorateInst(Inst, Var->getType());
+        Val = Inst;
         ++I;
       } else {
         llvm::report_fatal_error("Unsupported selector");
@@ -390,7 +402,8 @@ void CGProcedure::emitStmt(AssignmentStatement *Stmt) {
     if (!IdxList.empty()) {
       if (Base->getType()->isPointerTy()) {
         Base = Builder.CreateInBoundsGEP(Base, IdxList);
-        Builder.CreateStore(Val, Base);
+        llvm::Instruction *Inst = Builder.CreateStore(Val, Base);
+        CGM.decorateInst(Inst, Desig->getType());
       }
       else {
         llvm::report_fatal_error("should not happen");
