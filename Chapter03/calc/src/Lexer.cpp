@@ -46,10 +46,10 @@ CASE('+', Token::plus);
 CASE('-', Token::minus);
 CASE('*', Token::star);
 CASE('/', Token::slash);
-CASE('(', Token::Token::l_paren);
-CASE(')', Token::Token::r_paren);
-CASE(':', Token::Token::colon);
-CASE(',', Token::Token::comma);
+CASE('(', Token::l_paren);
+CASE(')', Token::r_paren);
+CASE(':', Token::colon);
+CASE(',', Token::comma);
 #undef CASE
     default:
       formToken(token, BufferPtr + 1, Token::unknown);
